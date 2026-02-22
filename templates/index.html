@@ -143,10 +143,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     <script>
-        // Set your API keys here locally or via localStorage (keys/groq, keys/weather, keys/gemini) - never commit real keys
-        const MASTER_GROQ_KEY = (typeof localStorage !== 'undefined' && localStorage.getItem('keys/groq')) || '';
-        const WEATHER_KEY = (typeof localStorage !== 'undefined' && localStorage.getItem('keys/weather')) || '';
-        const GEMINI_API_KEY = (typeof localStorage !== 'undefined' && localStorage.getItem('keys/gemini')) || '';
+        // API keys from server .env (fallback to localStorage for optional override)
+        const MASTER_GROQ_KEY = {{ groq_key |tojson }} || (typeof localStorage !== 'undefined' && localStorage.getItem('keys/groq')) || '';
+        const WEATHER_KEY = {{ weather_key|tojson }} || (typeof localStorage !== 'undefined' && localStorage.getItem('keys/weather')) || '';
+        const GEMINI_API_KEY = {{ gemini_key|tojson }} || (typeof localStorage !== 'undefined' && localStorage.getItem('keys/gemini')) || '';
 
 
         var map = L.map('map').setView([17.3850, 78.4867], 12);

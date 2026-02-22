@@ -4,7 +4,9 @@ import json
 import tensorflow as tf
 import numpy as np
 from PIL import Image
+from dotenv import load_dotenv
 
+load_dotenv()
 app = Flask(__name__)
 
 MODEL_PATH = "indian_monuments_classifier.h5"
@@ -43,7 +45,12 @@ print("Number of class names:", len(class_names))
 
 @app.route("/")
 def home():
-    return render_template("index.html")  # must be inside templates folder
+    api_keys = {
+        "groq_key": os.environ.get("GROQ_API_KEY", ""),
+        "weather_key": os.environ.get("OPENWEATHER_API_KEY", ""),
+        "gemini_key": os.environ.get("GEMINI_API_KEY", ""),
+    }
+    return render_template("index.html", **api_keys)
 
 @app.route("/predict", methods=["POST"])
 def predict():
