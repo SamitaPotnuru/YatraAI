@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Scout Pro - 2026 Unified Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <style>
+        body { background: #05080f; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .module-card { background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 1.5rem; backdrop-filter: blur(10px); margin-bottom: 2rem; padding: 1.5rem; }
+        #map { height: 400px; width: 100%; border-radius: 1rem; border: 1px solid #1e293b; z-index: 1; }
+        .chat-scroll { height: 300px; overflow-y: auto; }
+        .nav-input, .form-input { background: #0f172a; border: 1px solid #1e293b; padding: 12px; border-radius: 12px; font-size: 0.9rem; width: 100%; outline: none; color: white; transition: 0.3s; }
+        .nav-input:focus, .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.2); }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .filter-btn { background: #1e293b; border: 1px solid rgba(255,255,255,0.05); padding: 10px; border-radius: 12px; font-size: 0.75rem; transition: 0.3s; text-align: center; cursor: pointer; }
+        .filter-btn:hover { background: #ea580c; color: white; transform: translateY(-2px); }
+        .accent-orange { accent-color: #f97316; }
+        .list-container { max-height: 300px; overflow-y: auto; margin-top: 1rem; }
+        .attraction-item { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 12px; margin-bottom: 8px; transition: 0.2s; }
+        .attraction-item:hover { background: rgba(59, 130, 246, 0.1); border-color: #3b82f6; }
+    </style>
+</head>
+<body class="p-4 flex justify-center">
+
+    <div class="max-w-2xl w-full">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-black text-white italic tracking-tighter">SCOUT <span class="text-blue-500">PRO</span></h1>
+            <p class="text-slate-500 text-[10px] tracking-[0.3em] uppercase mt-2">Intelligence & Navigation Terminal • v5.0</p>
+        </header>
+
+        <section class="module-card">
+            <h2 class="text-cyan-400 text-xs font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
+                <span class="text-lg">📷</span> 1. Image Identification
+            </h2>
+            <div class="space-y-4">
+                <div class="border-2 border-dashed border-slate-800 rounded-2xl p-4 text-center hover:border-cyan-500/50 transition">
+                    <input type="file" id="imgInput" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 cursor-pointer">
+                </div>
+                <button onclick="runVision()" id="vBtn" class="w-full bg-cyan-600 hover:bg-cyan-500 py-3 rounded-xl font-bold transition">Scan Landmark</button>
+                <div id="vOut" class="p-4 bg-black/40 rounded-xl text-sm hidden border border-cyan-500/20 text-center text-cyan-100"></div>
+            </div>
+        </section>
+
+        <section class="module-card">
+            <h2 class="text-emerald-400 text-xs font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
+                <span class="text-lg">☁️</span> 2. Real-Time Weather
+            </h2>
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="wSearch" class="nav-input" placeholder="Search city (e.g. London, UK)" onkeypress="if(event.key==='Enter') manualWeather()">
+                <button onclick="manualWeather()" class="bg-emerald-600 px-6 rounded-xl hover:bg-emerald-500 transition">🔍</button>
+            </div>
+            <div id="wDisplay" class="hidden text-center p-6 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                <div id="wIcon" class="flex justify-center -my-4"></div>
+                <h3 id="wCityName" class="text-2xl font-bold text-white mb-1">---</h3>
+                <p id="wTemp" class="text-6xl font-black text-emerald-400">--°C</p>
+                <div class="flex justify-center gap-6 mt-4 text-[10px] text-slate-400 uppercase tracking-widest">
+                    <div class="text-center"><p>Humidity</p><p id="wHumid" class="text-white text-sm font-bold">--%</p></div>
+                    <div class="text-center"><p>Wind</p><p id="wWind" class="text-white text-sm font-bold">-- km/h</p></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="module-card">
+            <h2 class="text-purple-400 text-xs font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
+                <span class="text-lg">💬</span> 3. Smart Travel Chat
+            </h2>
+            <div id="chatBox" class="chat-scroll custom-scroll space-y-4 mb-4 p-4 bg-black/30 rounded-2xl border border-white/5">
+                <div class="text-center text-[10px] text-slate-600 uppercase tracking-widest py-2">System Ready</div>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="chatInput" class="nav-input" placeholder="Ask Scout AI anything..." onkeypress="if(event.key==='Enter') runChat()">
+                <button onclick="runChat()" class="bg-purple-600 px-6 rounded-xl hover:bg-purple-500 transition">🚀</button>
+            </div>
+        </section>
+
+        <section class="module-card">
+            <h2 class="text-blue-400 text-xs font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
+                <span class="text-lg">📍</span> 4. Live Navigation
+            </h2>
+            <div id="map" class="mb-4"></div>
+            <div class="space-y-3 mb-4">
+                <input type="text" id="startLoc" class="nav-input" placeholder="Origin (Optional: GPS used if empty)">
+                <input type="text" id="endLoc" class="nav-input" placeholder="Destination Landmark">
+                <button onclick="calculateRoute()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold transition">Get Directions</button>
+            </div>
+            <div id="routeBadge" class="hidden grid grid-cols-2 gap-4 bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl mb-4 text-center">
+                <div><p class="text-[9px] text-slate-500 uppercase font-bold">Distance</p><p id="distVal" class="text-xl font-black text-blue-400">-- km</p></div>
+                <div><p class="text-[9px] text-slate-500 uppercase font-bold">Time</p><p id="timeVal" class="text-xl font-black text-blue-400">-- min</p></div>
+            </div>
+        </section>
+
+        <section class="module-card">
+            <h2 class="text-orange-400 text-xs font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
+                <span class="text-lg">🗺️</span> 5. Explore Near Destination
+            </h2>
+            <p class="text-[10px] text-slate-500 mb-4 uppercase">Search results center on your destination target</p>
+            
+            <div class="mb-4">
+                <div class="flex justify-between text-[11px] text-slate-400 mb-2">
+                    <span>Search Radius</span>
+                    <span id="radiusVal" class="text-orange-400">10 km</span>
+                </div>
+                <input type="range" id="radiusRange" min="1" max="50" value="10" class="w-full accent-orange" oninput="document.getElementById('radiusVal').innerText = this.value + ' km'">
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <div onclick="findNearby('beach')" class="filter-btn">🏖️ Beaches</div>
+                <div onclick="findNearby('temple')" class="filter-btn">🛕 Temples</div>
+                <div onclick="findNearby('church')" class="filter-btn">⛪ Churches</div>
+                <div onclick="findNearby('hotel')" class="filter-btn">🏨 Hotels</div>
+                <div onclick="findNearby('restaurant')" class="filter-btn">🍽️ Restaurants</div>
+                <div onclick="findNearby('park')" class="filter-btn">🌳 Parks</div>
+                <div onclick="findNearby('scenery')" class="filter-btn">🌄 Scenery</div>
+            </div>
+
+            <div id="attractionList" class="list-container custom-scroll hidden">
+                <div class="text-[10px] text-slate-500 uppercase tracking-widest mb-3 border-b border-white/5 pb-2">Destinations Nearby</div>
+                <div id="listBody" class="space-y-2"></div>
+            </div>
+        </section>
+
+        <section class="module-card border-t-4 border-yellow-500/30">
+            <h2 class="text-yellow-400 text-xs font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
+                <span class="text-lg">✉️</span> 6. Feedback
+            </h2>
+            <form action="https://formspree.io/f/mdklevdd" method="POST" class="space-y-4">
+                <input type="text" name="name" class="form-input" placeholder="Name" required>
+                <input type="email" name="email" placeholder="example@domain.com" style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:12px; width:100%; color:white; box-sizing:border-box;" required>
+                <textarea name="message" rows="2" class="form-input" placeholder="Message..." required></textarea>
+                <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 py-3 rounded-xl font-black text-black">Transmit</button>
+            </form>
+        </section>
+
+        <footer class="text-center text-slate-700 text-[10px] pb-12 uppercase tracking-[0.3em]">
+            Project Sentinel • v5.0 • 2026
+        </footer>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script>
+        // Set your API keys here locally or via localStorage (keys/groq, keys/weather, keys/gemini) - never commit real keys
+        const MASTER_GROQ_KEY = (typeof localStorage !== 'undefined' && localStorage.getItem('keys/groq')) || '';
+        const WEATHER_KEY = (typeof localStorage !== 'undefined' && localStorage.getItem('keys/weather')) || '';
+        const GEMINI_API_KEY = (typeof localStorage !== 'undefined' && localStorage.getItem('keys/gemini')) || '';
+
+
+        var map = L.map('map').setView([17.3850, 78.4867], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        var routing = null;
+        var userPos = null;
+        var destinationCoords = null; // Global storage for the destination
+        var attractionMarkers = L.layerGroup().addTo(map);
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
+                map.setView(userPos, 13);
+                L.circle(userPos, {radius: 400, color: '#3b82f6'}).addTo(map);
+            });
+        }
+
+        async function getCoords(query) {
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                return data.length > 0 ? { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) } : null;
+            } catch (e) { return null; }
+        }
+
+        async function runVision() {
+            const file = document.getElementById('imgInput').files[0];
+            if (!file) {
+                alert("Select an image.");
+                return;
+            }
+
+            const btn = document.getElementById('vBtn');
+            const output = document.getElementById('vOut');
+
+            btn.disabled = true;
+            btn.innerText = "Scanning...";
+            output.classList.add('hidden');
+
+            let formData = new FormData();
+            formData.append("image", file);
+
+            try {
+                const response = await fetch("/predict", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error("Server error");
+                }
+
+                const data = await response.json();
+
+                output.classList.remove('hidden');
+                output.innerText =
+                    "Found: " + data.prediction +
+                    " (" + data.confidence + "% confidence)";
+
+                document.getElementById('endLoc').value = data.prediction;
+
+            } catch (error) {
+                console.error(error);
+                output.classList.remove('hidden');
+                output.innerText = "Server error. Check backend.";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Scan Landmark";
+            }
+        }
+
+        async function calculateRoute() {
+            const eStr = document.getElementById('endLoc').value;
+            if(!eStr) return alert("Enter destination.");
+            
+            const sStr = document.getElementById('startLoc').value;
+            const sCoords = sStr ? await getCoords(sStr) : (userPos ? { lat: userPos.lat, lon: userPos.lng } : null);
+            const eCoords = await getCoords(eStr);
+            
+            if(!sCoords || !eCoords) return alert("Location not found.");
+            
+            destinationCoords = eCoords; // Lock destination for Section 5
+
+            if(routing) map.removeControl(routing);
+            routing = L.Routing.control({
+                waypoints: [L.latLng(sCoords.lat, sCoords.lon), L.latLng(eCoords.lat, eCoords.lon)],
+                lineOptions: { styles: [{ color: '#3b82f6', weight: 6, opacity: 0.8 }] },
+                createMarker: () => null
+            }).on('routesfound', (e) => {
+                const s = e.routes[0].summary;
+                document.getElementById('routeBadge').classList.remove('hidden');
+                document.getElementById('distVal').innerText = (s.totalDistance/1000).toFixed(1) + " km";
+                document.getElementById('timeVal').innerText = Math.round(s.totalTime/60) + " min";
+                map.fitBounds([L.latLng(sCoords.lat, sCoords.lon), L.latLng(eCoords.lat, eCoords.lon)]);
+            }).addTo(map);
+        }
+
+        async function manualWeather() {
+            const city = document.getElementById('wSearch').value.trim();
+            if (!city) {
+                alert("Enter a city name.");
+                return;
+            }
+
+            const display = document.getElementById('wDisplay');
+            display.classList.add('hidden');
+
+            try {
+                const geoRes = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${WEATHER_KEY}`);
+                const geoData = await geoRes.json();
+                
+                if (!geoData || geoData.length === 0) {
+                    alert("City not found.");
+                    return;
+                }
+
+                const { lat, lon, name, country } = geoData[0];
+                const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_KEY}&units=metric`);
+                
+                if (!weatherRes.ok) {
+                    throw new Error(`Weather API error: ${weatherRes.status}`);
+                }
+
+                const weatherData = await weatherRes.json();
+                const iconCode = weatherData.weather[0].icon;
+                const iconEmoji = {
+                    '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
+                    '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
+                    '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌧️',
+                    '11d': '⛈️', '11n': '⛈️', '13d': '🌨️', '13n': '🌨️',
+                    '50d': '🌫️', '50n': '🌫️'
+                };
+
+                document.getElementById('wIcon').innerHTML = `<span style="font-size:4rem;">${iconEmoji[iconCode] || '🌤️'}</span>`;
+                document.getElementById('wCityName').innerText = `${name}, ${country}`;
+                document.getElementById('wTemp').innerText = Math.round(weatherData.main.temp) + "°C";
+                document.getElementById('wHumid').innerText = weatherData.main.humidity + "%";
+                document.getElementById('wWind').innerText = Math.round(weatherData.wind.speed * 3.6) + " km/h";
+                
+                display.classList.remove('hidden');
+            } catch (error) {
+                console.error("Weather error:", error);
+                alert("Failed to fetch weather. Check console for details.");
+            }
+        }
+
+        async function runChat() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const chatBox = document.getElementById('chatBox');
+            const userMsg = document.createElement('div');
+            userMsg.className = "text-right";
+            userMsg.innerHTML = `<div class="inline-block bg-purple-600/30 px-4 py-2 rounded-xl text-sm mb-2">${message}</div>`;
+            chatBox.appendChild(userMsg);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            input.value = "";
+            input.disabled = true;
+
+            const botMsg = document.createElement('div');
+            botMsg.className = "text-left";
+            botMsg.innerHTML = `<div class="inline-block bg-slate-700/50 px-4 py-2 rounded-xl text-sm mb-2 animate-pulse">Thinking...</div>`;
+            chatBox.appendChild(botMsg);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${MASTER_GROQ_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'llama-3.1-8b-instant',
+                        messages: [
+                            { role: 'system', content: 'You are Scout AI, a helpful travel assistant. Keep responses concise and travel-focused.' },
+                            { role: 'user', content: message }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 500
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const reply = data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
+
+                botMsg.innerHTML = `<div class="inline-block bg-slate-700/50 px-4 py-2 rounded-xl text-sm mb-2">${reply}</div>`;
+            } catch (error) {
+                console.error("Chat error:", error);
+                botMsg.innerHTML = `<div class="inline-block bg-red-600/30 px-4 py-2 rounded-xl text-sm mb-2">Error: Could not connect to AI. Check console.</div>`;
+            } finally {
+                input.disabled = false;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+
+        // 5. ATTRACTIONS ENGINE (FOCUSED ON DESTINATION)
+        async function findNearby(category) {
+            // Use destinationCoords if available, otherwise use map center
+            const searchPoint = destinationCoords ? L.latLng(destinationCoords.lat, destinationCoords.lon) : map.getCenter();
+            const radius = document.getElementById('radiusRange').value * 1000;
+            const listPanel = document.getElementById('attractionList');
+            const listBody = document.getElementById('listBody');
+            
+            attractionMarkers.clearLayers();
+            listBody.innerHTML = `<div class="text-xs text-orange-400 animate-pulse text-center">Searching around target destination...</div>`;
+            listPanel.classList.remove('hidden');
+
+            let queryMap = {
+                'beach': '["natural"="beach"]',
+                'temple': '["amenity"="place_of_worship"]["religion"="hindu"]',
+                'church': '["amenity"="place_of_worship"]["religion"="christian"]',
+                'hotel': '["tourism"="hotel"]',
+                'restaurant': '["amenity"="restaurant"]',
+                'park': '["leisure"="park"]',
+                'scenery': '["tourism"="viewpoint"]'
+            };
+
+            let q = `[out:json];node(around:${radius},${searchPoint.lat},${searchPoint.lng})${queryMap[category]};out;`;
+
+            try {
+                const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+                const data = await res.json();
+                listBody.innerHTML = "";
+                
+                if(data.elements.length === 0) {
+                    listBody.innerHTML = `<div class="text-xs text-slate-500 text-center">No ${category}s found in this radius of the destination.</div>`;
+                    return;
+                }
+
+                data.elements.forEach(el => {
+                    const latlng = L.latLng(el.lat, el.lon);
+                    const distance = (searchPoint.distanceTo(latlng) / 1000).toFixed(2);
+                    const name = el.tags.name || `Unnamed ${category}`;
+                    const place = `${el.lat.toFixed(3)}, ${el.lon.toFixed(3)}`;
+
+                    L.marker([el.lat, el.lon])
+                     .bindPopup(`<b style="color:black">${name}</b><br><span style="color:gray">${distance} km from destination</span>`)
+                     .addTo(attractionMarkers);
+
+                    const item = document.createElement('div');
+                    item.className = "attraction-item cursor-pointer";
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h4 class="text-sm font-bold text-white">${name}</h4>
+                                <p class="text-[9px] text-slate-500 uppercase">${place}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-black text-orange-400">${distance} KM</span>
+                                <p class="text-[8px] text-slate-600">FROM TARGET</p>
+                            </div>
+                        </div>
+                    `;
+                    item.onclick = () => {
+                        map.setView([el.lat, el.lon], 16);
+                        L.popup().setLatLng([el.lat, el.lon]).setContent(`<b style="color:black">${name}</b>`).openOn(map);
+                    };
+                    listBody.appendChild(item);
+                });
+                
+                // Move map view to the destination to show the new markers
+                map.setView(searchPoint, 13);
+
+            } catch (e) { 
+                listBody.innerHTML = `<div class="text-red-400 text-xs text-center">Connection error.</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

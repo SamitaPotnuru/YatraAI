@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yatri-AI | India's Heritage Companion</title>
+    <meta name="description" content="AI-powered Indian monument guide, weather updates, and travel planner.">
+
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        :root {
+            --bg-primary: #FFF8F0;
+            --bg-secondary: #FFFFFF;
+            --bg-card: #FFFFFF;
+            --text-primary: #1A1A2E;
+            --text-secondary: #4A4A68;
+            --accent-primary: #D4740C; /* Saffron */
+            --accent-hover: #B85C00;
+            --accent-green: #138808; /* India Green */
+            --border-color: #E8E0D5;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 20px rgba(0,0,0,0.1);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.15);
+            --gradient-hero: linear-gradient(135deg, #FFF1E0 0%, #FFF8F0 100%);
+            --gradient-accent: linear-gradient(135deg, #D4740C, #FF9933);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0F0F1A;
+            --bg-secondary: #1A1A2E;
+            --bg-card: #252540;
+            --text-primary: #F5F5F7;
+            --text-secondary: #B8B8C8;
+            --border-color: #3A3A50;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; }
+
+        /* --- Header --- */
+        header {
+            position: fixed;
+            top: 0; width: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 0;
+            transition: background 0.3s;
+        }
+        [data-theme="dark"] header { background: rgba(26, 26, 46, 0.9); }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        
+        .nav-wrapper { display: flex; justify-content: space-between; align-items: center; }
+        
+        .logo {
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none; color: var(--accent-primary);
+            font-weight: 700; font-size: 1.5rem;
+        }
+        .logo-icon {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--gradient-accent); color: white;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .nav-links { display: flex; gap: 20px; }
+        .nav-links a {
+            text-decoration: none; color: var(--text-secondary);
+            font-weight: 500; font-size: 0.95rem; transition: 0.3s;
+        }
+        .nav-links a:hover { color: var(--accent-primary); }
+
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .btn-icon {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            padding: 8px 12px; border-radius: 20px; cursor: pointer;
+            transition: 0.2s; font-size: 1rem;
+        }
+        .btn-icon:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
+
+        /* --- Hero Section --- */
+        .hero {
+            padding: 120px 0 60px;
+            background: var(--gradient-hero);
+            min-height: 90vh;
+            display: flex; align-items: center;
+        }
+        [data-theme="dark"] .hero { background: radial-gradient(circle at top, #1a1a2e 0%, #0f0f1a 100%); }
+
+        .hero-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
+        }
+
+        .hero-title {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            line-height: 1.1; margin-bottom: 20px;
+        }
+        .hero-title span {
+            background: var(--gradient-accent);
+            -webkit-background-clip: text; color: transparent;
+        }
+        
+        .hero-badges { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+        .badge {
+            padding: 5px 12px; border-radius: 20px; font-size: 0.85rem;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .hero-visual {
+            position: relative;
+        }
+        .hero-card {
+            background: var(--bg-card); padding: 20px; border-radius: 24px;
+            box-shadow: var(--shadow-lg); border: 1px solid var(--border-color);
+            transform: rotate(-2deg); transition: transform 0.3s;
+        }
+        .hero-card:hover { transform: rotate(0deg); }
+        .hero-img {
+            width: 100%; height: 300px; object-fit: cover; border-radius: 16px;
+        }
+
+        .btn-primary {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: var(--gradient-accent); color: white;
+            padding: 14px 32px; border-radius: 30px;
+            text-decoration: none; font-weight: 600;
+            box-shadow: var(--shadow-md); transition: transform 0.2s;
+            border: none; cursor: pointer;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+        /* --- Global Sections --- */
+        .section { padding: 80px 0; }
+        .section-header { text-align: center; margin-bottom: 50px; }
+        .section-header h2 { font-size: 2.5rem; margin-bottom: 10px; }
+
+        /* --- Search Bar --- */
+        .search-wrapper {
+            background: var(--bg-secondary);
+            padding: 10px; border-radius: 50px;
+            display: flex; gap: 10px; box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+        .search-input {
+            flex: 1; border: none; outline: none; padding: 0 20px;
+            font-size: 1rem; background: transparent; color: var(--text-primary);
+        }
+        
+        /* --- Analyzer --- */
+        .analyzer-box {
+            background: var(--bg-card); border-radius: 24px;
+            padding: 40px; text-align: center;
+            border: 2px dashed var(--border-color);
+            transition: 0.3s; cursor: pointer;
+        }
+        .analyzer-box:hover { border-color: var(--accent-primary); background: rgba(212, 116, 12, 0.03); }
+        
+        .preview-container { margin-top: 20px; display: none; }
+        .preview-container img { max-width: 100%; max-height: 400px; border-radius: 12px; }
+
+        .result-card {
+            background: var(--bg-secondary); border-radius: 16px;
+            padding: 25px; margin-top: 20px; border: 1px solid var(--border-color);
+            display: none; text-align: left; animation: slideUp 0.5s ease;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .info-bit { background: var(--bg-card); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); }
+        .info-bit h4 { color: var(--accent-primary); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 5px; }
+
+        /* --- Map & Weather --- */
+        #map { height: 500px; border-radius: 20px; z-index: 1; }
+        
+        .weather-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 20px; }
+        .forecast-card {
+            background: var(--bg-card); padding: 15px; border-radius: 12px;
+            text-align: center; border: 1px solid var(--border-color);
+        }
+
+        /* --- Chatbot --- */
+        .chatbot-btn {
+            position: fixed; bottom: 30px; right: 30px;
+            width: 60px; height: 60px; border-radius: 50%;
+            background: var(--gradient-accent); color: white;
+            border: none; font-size: 1.5rem; cursor: pointer;
+            box-shadow: var(--shadow-lg); z-index: 999;
+            transition: transform 0.2s;
+        }
+        .chatbot-btn:hover { transform: scale(1.1); }
+
+        .chat-window {
+            position: fixed; bottom: 100px; right: 30px;
+            width: 350px; height: 500px; background: var(--bg-card);
+            border-radius: 20px; box-shadow: var(--shadow-lg);
+            display: none; flex-direction: column; z-index: 998;
+            border: 1px solid var(--border-color); overflow: hidden;
+        }
+        .chat-header { padding: 15px; background: var(--gradient-accent); color: white; }
+        .chat-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .chat-input-area { padding: 10px; border-top: 1px solid var(--border-color); display: flex; gap: 5px; }
+        
+        .msg { padding: 8px 12px; border-radius: 10px; max-width: 80%; font-size: 0.9rem; }
+        .msg.user { background: var(--accent-primary); color: white; align-self: flex-end; }
+        .msg.bot { background: var(--bg-primary); color: var(--text-primary); align-self: flex-start; border: 1px solid var(--border-color); }
+
+        /* --- Loading Spinner --- */
+        .loader {
+            border: 3px solid #f3f3f3; border-top: 3px solid var(--accent-primary);
+            border-radius: 50%; width: 24px; height: 24px;
+            animation: spin 1s linear infinite; display: none; margin: 10px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-grid { grid-template-columns: 1fr; text-align: center; }
+            .hero-title { font-size: 2.5rem; }
+            .nav-links { display: none; } /* Simplified for demo */
+            .hero-visual { display: none; } /* Hide heavy image on mobile */
+            .chat-window { width: 90%; right: 5%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container nav-wrapper">
+            <a href="#" class="logo">
+                <div class="logo-icon">🏛️</div>
+                <span>Yatri-AI</span>
+            </a>
+            <nav class="nav-links">
+                <a href="#analyzer">Analyzer</a>
+                <a href="#map-section">Map & Route</a>
+                <a href="#weather-section">Weather</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn-icon" id="themeToggle" title="Toggle Theme">🌙</button>
+            </div>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container hero-grid">
+            <div class="hero-content">
+                <div class="hero-badges">
+                    <span class="badge">🇮🇳 Built for India</span>
+                    <span class="badge">🤖 Gemini AI Powered</span>
+                    <span class="badge">🌤️ Live Weather</span>
+                </div>
+                <h1 class="hero-title">Discover India's <br><span>Timeless Heritage</span></h1>
+                <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 1.1rem;">
+                    Your intelligent travel companion. Identify monuments, plan routes, check weather, and chat with our AI guide—all in one place.
+                </p>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+                    <a href="#analyzer" class="btn-primary">Launch Analyzer</a>
+                    <button class="btn-icon" onclick="scrollToMap()">🗺️ Explore Map</button>
+                </div>
+            </div>
+            
+            <div class="hero-visual">
+                <div class="hero-card">
+                    <img src="https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800" class="hero-img" alt="Taj Mahal">
+                    <div style="margin-top: 15px;">
+                        <h3>Taj Mahal, Agra</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary);">"The teardrop on the cheek of time."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="analyzer" class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>📸 Monument Analyzer</h2>
+                <p>Upload a photo or search to uncover the stories behind the stone.</p>
+            </div>
+
+            <div class="search-wrapper">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search (e.g., Red Fort, Charminar)...">
+                <button class="btn-icon" id="voiceBtn" title="Voice Search">🎤</button>
+                <button class="btn-primary" onclick="handleSearch()" style="padding: 10px 24px;">Search</button>
+            </div>
+
+            <div class="analyzer-box" id="uploadArea">
+                <div style="font-size: 3rem; margin-bottom: 10px;">📷</div>
+                <h3>Click to Upload or Drag Photo</h3>
+                <p style="color: var(--text-secondary);">Supports JPG, PNG, WEBP</p>
+                <input type="file" id="fileInput" accept="image/*" hidden>
+            </div>
+
+            <div class="preview-container" id="previewArea">
+                <img id="previewImage" src="" alt="Preview">
+                <div style="margin-top: 15px;">
+                    <button class="btn-primary" onclick="analyzeImage()">✨ Analyze with AI</button>
+                </div>
+            </div>
+            
+            <div class="loader" id="loader"></div>
+
+            <div class="result-card" id="analysisResult">
+                </div>
+        </div>
+    </section>
+
+    <section id="map-section" class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <div class="section-header">
+                <h2>🗺️ Smart Route Planner</h2>
+                <p>Find your way and discover nearby attractions.</p>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <input type="text" id="startLocation" class="search-input" style="background: var(--bg-card); border: 1px solid var(--border-color);" placeholder="Your Location" readonly>
+                <input type="text" id="endLocation" class="search-input" style="background: var(--bg-card); border: 1px solid var(--border-color);" placeholder="Destination">
+                <button class="btn-icon" onclick="locateMe()">📍 Locate Me</button>
+                <button class="btn-primary" onclick="calculateRoute()">Get Directions</button>
+            </div>
+
+            <div id="map"></div>
+            <div id="routeStats" style="margin-top: 15px; font-weight: 600; color: var(--accent-primary);"></div>
+        </div>
+    </section>
+
+    <section id="weather-section" class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>🌤️ Destination Weather</h2>
+            </div>
+            <div class="result-card" style="display: block; text-align: center;">
+                <h3 id="weatherCity">Agra, India</h3>
+                <div style="font-size: 3rem; margin: 10px 0;" id="weatherIcon">☀️</div>
+                <h2 id="weatherTemp">32°C</h2>
+                <p id="weatherDesc">Clear Sky</p>
+                
+                <div class="weather-grid" id="forecastGrid">
+                    </div>
+            </div>
+        </div>
+    </section>
+
+    <footer style="background: var(--bg-secondary); padding: 30px; text-align: center; border-top: 1px solid var(--border-color);">
+        <p>© 2024 Yatri-AI. Made with ❤️ for Indian Heritage.</p>
+    </footer>
+
+    <button class="chatbot-btn" onclick="toggleChat()">💬</button>
+    <div class="chat-window" id="chatWindow">
+        <div class="chat-header">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span>🤖 Yatri Assistant</span>
+                <span style="cursor:pointer;" onclick="toggleChat()">✕</span>
+            </div>
+        </div>
+        <div class="chat-body" id="chatBody">
+            <div class="msg bot">Namaste! Ask me anything about Indian monuments or travel planning.</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Type a message..." style="flex:1; padding:8px; border-radius:8px; border:1px solid #ccc;">
+            <button onclick="sendMessage()" class="btn-primary" style="padding: 8px 15px;">➤</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ==========================================
+        // CONFIGURATION (REPLACE THESE KEYS!)
+        // ==========================================
+        const GEMINI_API_KEY = 'AIzaSyARnOfnvH-WH2mazqe_UlQbKsQFggAo5bQ'; // Replace with valid key
+        const OPENWEATHER_API_KEY = '0a19dee464e65fb1957b9ca4b440e702'; // Replace with valid key
+
+        // Global State
+        let map;
+        let userLat, userLng;
+        let routeLayer;
+        let selectedImageBase64 = null;
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            initMap();
+            setupEventListeners();
+            loadWeather(27.1751, 78.0421, 'Agra'); // Default: Taj Mahal
+        });
+
+        function setupEventListeners() {
+            // Upload
+            const dropArea = document.getElementById('uploadArea');
+            const fileIn = document.getElementById('fileInput');
+
+            dropArea.addEventListener('click', () => fileIn.click());
+            fileIn.addEventListener('change', handleFileSelect);
+
+            dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.style.background = '#f0f0f0'; });
+            dropArea.addEventListener('dragleave', () => { dropArea.style.background = 'var(--bg-card)'; });
+            dropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropArea.style.background = 'var(--bg-card)';
+                if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+            });
+
+            // Chat Enter Key
+            document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                if(e.key === 'Enter') sendMessage();
+            });
+
+            // Voice Search
+            if('webkitSpeechRecognition' in window) {
+                const recognition = new webkitSpeechRecognition();
+                recognition.lang = 'en-IN';
+                document.getElementById('voiceBtn').onclick = () => {
+                    alert('Listening...');
+                    recognition.start();
+                };
+                recognition.onresult = (e) => {
+                    document.getElementById('searchInput').value = e.results[0][0].transcript;
+                    handleSearch();
+                };
+            }
+        }
+
+        // --- Map Logic ---
+        function initMap() {
+            map = L.map('map').setView([20.5937, 78.9629], 5); // Center of India
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+        }
+
+        function scrollToMap() {
+            document.getElementById('map-section').scrollIntoView();
+            setTimeout(() => map.invalidateSize(), 500);
+        }
+
+        function locateMe() {
+            if(!navigator.geolocation) return alert('Geolocation not supported');
+            navigator.geolocation.getCurrentPosition(pos => {
+                userLat = pos.coords.latitude;
+                userLng = pos.coords.longitude;
+                document.getElementById('startLocation').value = "My Location";
+                
+                L.marker([userLat, userLng]).addTo(map).bindPopup("You are here").openPopup();
+                map.setView([userLat, userLng], 13);
+            }, () => alert('Location permission denied'));
+        }
+
+        async function calculateRoute() {
+            const dest = document.getElementById('endLocation').value;
+            if(!userLat || !dest) return alert('Please locate yourself and enter a destination.');
+
+            // Geocode Destination (Nominatim)
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${dest}`);
+                const data = await res.json();
+                if(!data.length) return alert('Destination not found');
+
+                const destLat = data[0].lat;
+                const destLng = data[0].lon;
+
+                // OSRM Routing (Free, no key required for demo)
+                const routeUrl = `https://router.project-osrm.org/route/v1/driving/${userLng},${userLat};${destLng},${destLat}?overview=full&geometries=geojson`;
+                const routeRes = await fetch(routeUrl);
+                const routeData = await routeRes.json();
+
+                if(routeLayer) map.removeLayer(routeLayer);
+
+                const coords = routeData.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                routeLayer = L.polyline(coords, {color: 'blue', weight: 5}).addTo(map);
+                map.fitBounds(routeLayer.getBounds());
+
+                const dist = (routeData.routes[0].distance / 1000).toFixed(1);
+                const time = Math.round(routeData.routes[0].duration / 60);
+                document.getElementById('routeStats').innerText = `Distance: ${dist} km | Time: ${time} mins`;
+                
+                // Update Weather for destination
+                loadWeather(destLat, destLng, dest);
+
+            } catch(e) {
+                console.error(e);
+                alert('Error calculating route.');
+            }
+        }
+
+        // --- Weather Logic ---
+        async function loadWeather(lat, lng, cityName) {
+            if(OPENWEATHER_API_KEY === 'YOUR_KEY') return; // Silent fail if no key
+
+            try {
+                // Current
+                const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${OPENWEATHER_API_KEY}&units=metric`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                document.getElementById('weatherCity').innerText = cityName || data.name;
+                document.getElementById('weatherTemp').innerText = Math.round(data.main.temp) + "°C";
+                document.getElementById('weatherDesc').innerText = data.weather[0].description;
+                
+                // Forecast (5 Day)
+                const fUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lng}&appid=${OPENWEATHER_API_KEY}&units=metric`;
+                const fRes = await fetch(fUrl);
+                const fData = await fRes.json();
+
+                const grid = document.getElementById('forecastGrid');
+                grid.innerHTML = '';
+                
+                // Filter to get 1 reading per day (approx noon)
+                const daily = fData.list.filter(item => item.dt_txt.includes("12:00:00"));
+                
+                daily.forEach(day => {
+                    const date = new Date(day.dt * 1000).toLocaleDateString('en-US', {weekday: 'short'});
+                    const div = document.createElement('div');
+                    div.className = 'forecast-card';
+                    div.innerHTML = `<strong>${date}</strong><br>${Math.round(day.main.temp)}°C<br>${day.weather[0].main}`;
+                    grid.appendChild(div);
+                });
+
+            } catch(e) { console.log("Weather error", e); }
+        }
+
+        // --- AI Analyzer (Gemini) ---
+        function handleFileSelect(e) { handleFile(e.target.files[0]); }
+        
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('previewImage').src = e.target.result;
+                document.getElementById('previewArea').style.display = 'block';
+                document.getElementById('uploadArea').style.display = 'none';
+                selectedImageBase64 = e.target.result.split(',')[1]; // Remove header
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleSearch() {
+            const query = document.getElementById('searchInput').value;
+            if(query) analyzeText(query);
+        }
+
+        async function analyzeImage() {
+            if(!selectedImageBase64) return;
+            showLoader(true);
+            
+            const prompt = "Identify this Indian monument. Return valid JSON with keys: name, location, history (short), facts (array of 3), entry_fee.";
+
+            try {
+                const response = await callGemini(prompt, selectedImageBase64);
+                displayResults(response);
+            } catch(e) {
+                alert("AI Analysis failed. Check API Key.");
+                console.error(e);
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        async function analyzeText(query) {
+            showLoader(true);
+            const prompt = `Tell me about the monument "${query}" in India. Return valid JSON with keys: name, location, history (short), facts (array of 3), entry_fee.`;
+            
+            try {
+                const response = await callGemini(prompt, null);
+                displayResults(response);
+                
+                // Also update map
+                document.getElementById('endLocation').value = query;
+                document.getElementById('map-section').scrollIntoView();
+            } catch(e) {
+                alert("Search failed.");
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        async function callGemini(text, imageBase64) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            
+            const parts = [{ text: text }];
+            if(imageBase64) {
+                parts.push({
+                    inline_data: { mime_type: "image/jpeg", data: imageBase64 }
+                });
+            }
+
+            const body = { contents: [{ parts: parts }] };
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+
+            const data = await res.json();
+            let rawText = data.candidates[0].content.parts[0].text;
+            
+            // Clean markdown code blocks if present
+            rawText = rawText.replace(/```json/g, '').replace(/```/g, '');
+            return JSON.parse(rawText);
+        }
+
+        function displayResults(data) {
+            const container = document.getElementById('analysisResult');
+            container.innerHTML = `
+                <h3 style="color: var(--accent-primary);">${data.name}</h3>
+                <p>📍 ${data.location}</p>
+                <div class="result-grid">
+                    <div class="info-bit"><h4>Fee</h4>${data.entry_fee}</div>
+                    <div class="info-bit"><h4>History</h4>${data.history}</div>
+                </div>
+                <h4>Did You Know?</h4>
+                <ul>${data.facts.map(f => `<li>${f}</li>`).join('')}</ul>
+                <div style="margin-top:20px">
+                    <button class="btn-primary" onclick="speak('${data.history.replace(/'/g, "")}')">🔊 Listen</button>
+                </div>
+            `;
+            container.style.display = 'block';
+        }
+
+        // --- Chatbot ---
+        function toggleChat() {
+            const win = document.getElementById('chatWindow');
+            win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const txt = input.value.trim();
+            if(!txt) return;
+
+            // User msg
+            const body = document.getElementById('chatBody');
+            body.innerHTML += `<div class="msg user">${txt}</div>`;
+            input.value = '';
+            body.scrollTop = body.scrollHeight;
+
+            // API Call
+            try {
+                const response = await callGemini(`You are a travel guide. Answer briefly: ${txt}`, null);
+                // Note: callGemini expects JSON response for the analyzer, but here we might get plain text if not prompted for JSON.
+                // For simplicity in this demo, reusing callGemini but handling plain text is safer.
+                // Let's do a direct fetch for chat to avoid JSON parsing errors.
+                
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{ parts: [{ text: "You are a helpful Indian travel guide. Answer this: " + txt }] }] })
+                });
+                const data = await res.json();
+                const reply = data.candidates[0].content.parts[0].text;
+
+                body.innerHTML += `<div class="msg bot">${reply}</div>`;
+                body.scrollTop = body.scrollHeight;
+            } catch(e) {
+                body.innerHTML += `<div class="msg bot">Sorry, I can't connect right now.</div>`;
+            }
+        }
+
+        // --- Utils ---
+        function speak(text) {
+            const u = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(u);
+        }
+
+        function showLoader(show) {
+            document.getElementById('loader').style.display = show ? 'block' : 'none';
+        }
+
+        function initTheme() {
+            const btn = document.getElementById('themeToggle');
+            btn.addEventListener('click', () => {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+                btn.innerText = isDark ? '🌙' : '☀️';
+            });
+        }
+    </script>
+</body>
+</html>
