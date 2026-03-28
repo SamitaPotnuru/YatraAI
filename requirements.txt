@@ -1,5 +1,6 @@
-flask
+flask>=3.0
 tensorflow
 numpy
 Pillow
 python-dotenv
+requests>=2.28
