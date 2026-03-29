@@ -1,5 +1,6 @@
 flask>=3.0
 tensorflow
+gunicorn 
 numpy
 Pillow
 python-dotenv
