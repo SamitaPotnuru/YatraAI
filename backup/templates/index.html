@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Scout Pro — YatraAI</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/scout.css') }}" />
+</head>
+<body class="p-4 flex justify-center">
+
+    <div class="max-w-2xl w-full">
+        <header class="relative text-center mb-10 pt-12">
+            <h1 class="scout-brand">SCOUT <span class="scout-brand-accent">PRO</span></h1>
+            <p class="scout-tagline">Intelligence &amp; navigation</p>
+            <button type="button" id="themeToggle" class="scout-theme-btn" aria-label="Switch color theme" aria-pressed="false">
+                Switch to light mode
+            </button>
+        </header>
+
+        <section class="module-card scout-card-top-cyan">
+            <h2 class="scout-h2 scout-h2--cyan">
+                <span class="text-lg" aria-hidden="true">📷</span> 1. Image identification
+            </h2>
+            <div class="space-y-4">
+                <div class="scout-upload">
+                    <input type="file" id="imgInput" class="scout-file" aria-label="Choose a landmark photo"
+                        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/bmp,image/x-ms-bmp,image/tiff,image/x-icon,image/avif,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.gif,.bmp,.tif,.tiff,.ico,.avif,.heic,.heif">
+                </div>
+                <button type="button" onclick="runVision()" id="vBtn" class="btn-scout btn-scout-cyan">Scan landmark</button>
+                <div id="vOut" class="scout-vision-out hidden"></div>
+            </div>
+        </section>
+
+        <section class="module-card scout-card-top-emerald">
+            <h2 class="scout-h2 scout-h2--emerald">
+                <span class="text-lg" aria-hidden="true">☁️</span> 2. Weather &amp; brief
+            </h2>
+            <div class="flex gap-2 mb-4">
+                <div class="relative flex-grow">
+                    <input type="text" id="wSearch" class="nav-input pr-10" placeholder="City, monument, or state…" onkeypress="if(event.key==='Enter') manualWeather()">
+                    <button type="button" onclick="runVoice('wSearch')" class="btn-voice" title="Voice Search" aria-label="Activate voice search">🎤</button>
+                </div>
+                <button type="button" onclick="manualWeather()" class="btn-scout-emerald shrink-0" aria-label="Search weather">🔍</button>
+            </div>
+            <div id="wDisplay" class="scout-weather-panel hidden">
+                <div id="wIcon" class="flex justify-center -my-4"></div>
+                <h3 id="wCityName" class="scout-weather-city">---</h3>
+                <p id="wStateName" class="scout-weather-region">---</p>
+                <p id="wTemp" class="scout-weather-temp">--°C</p>
+                <div class="scout-weather-meta">
+                    <div><span>Humidity</span><strong id="wHumid">--%</strong></div>
+                    <div><span>Wind</span><strong id="wWind">-- km/h</strong></div>
+                </div>
+                <div id="wForecast" class="scout-weather-forecast hidden custom-scroll"></div>
+            </div>
+            <div id="wWikiOut" class="scout-wiki-box hidden space-y-2">
+                <p class="scout-wiki-label">Location brief</p>
+                <p id="wWikiText" class="scout-wiki-text"></p>
+                <a id="wWikiLink" target="_blank" rel="noopener noreferrer" class="scout-wiki-link">Read more →</a>
+            </div>
+        </section>
+
+        <section class="module-card scout-card-top-purple">
+            <h2 class="scout-h2 scout-h2--purple">
+                <span class="text-lg" aria-hidden="true">💬</span> 3. Travel chat
+            </h2>
+            <div id="chatBox" class="scout-chat-box custom-scroll">
+                <div class="scout-chat-status">System ready</div>
+            </div>
+            <div class="flex gap-2">
+                <div class="relative flex-grow">
+                    <input type="text" id="chatInput" class="nav-input pr-10" placeholder="Ask Scout AI…" onkeypress="if(event.key==='Enter') runChat()">
+                    <button type="button" onclick="runVoice('chatInput')" class="btn-voice" title="Voice Input" aria-label="Activate voice input">🎤</button>
+                </div>
+                <button type="button" onclick="runChat()" class="btn-scout-purple shrink-0" aria-label="Send message">🚀</button>
+            </div>
+        </section>
+
+        <section class="module-card scout-card-top-blue">
+            <h2 class="scout-h2 scout-h2--blue">
+                <span class="text-lg" aria-hidden="true">📍</span> 4. Navigation
+            </h2>
+            <div id="map" class="mb-4" role="application" aria-label="Map"></div>
+            <div class="space-y-3 mb-4">
+                <div class="relative">
+                    <input type="text" id="startLoc" class="nav-input pr-20" placeholder="Origin (optional — GPS if empty)">
+                    <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <button type="button" onclick="runVoice('startLoc')" class="btn-voice static translate-y-0" title="Voice Input" aria-label="Activate voice input for origin">🎤</button>
+                        <button type="button" onclick="findMe()" class="btn-icon-nav static translate-y-0" title="Use current location" aria-label="Use GPS for origin">🎯</button>
+                    </div>
+                </div>
+                <div class="relative">
+                    <input type="text" id="endLoc" class="nav-input pr-10" placeholder="Destination">
+                    <button type="button" onclick="runVoice('endLoc')" class="btn-voice" title="Voice Input" aria-label="Activate voice input for destination">🎤</button>
+                </div>
+                <button type="button" onclick="calculateRoute()" class="btn-scout btn-scout-blue">Get directions</button>
+            </div>
+            <div id="routeBadge" class="scout-route-badge hidden" role="group" aria-label="Route summary">
+                <div>
+                    <p class="scout-route-label">Distance</p>
+                    <p id="distVal" class="scout-route-value">-- km</p>
+                </div>
+                <div>
+                    <p class="scout-route-label">Time</p>
+                    <p id="timeVal" class="scout-route-value">-- min</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="module-card scout-card-top-orange">
+            <h2 class="scout-h2 scout-h2--orange">
+                <span class="text-lg" aria-hidden="true">🗺️</span> 5. Near destination
+            </h2>
+            <p class="scout-hint">Results center on your routed destination</p>
+            <div class="mb-4">
+                <div class="scout-radius-row">
+                    <span>Radius</span>
+                    <span id="radiusVal" class="scout-radius-val">10 km</span>
+                </div>
+                <input type="range" id="radiusRange" min="1" max="50" value="10" class="w-full accent-orange" oninput="document.getElementById('radiusVal').innerText = this.value + ' km'">
+            </div>
+            <div class="grid grid-cols-3 gap-2" id="nearbyFilterBar" role="toolbar" aria-label="Nearby place categories">
+                <button type="button" data-nearby-cat="beach" onclick="findNearby('beach')" class="filter-btn">🏖️ Beaches</button>
+                <button type="button" data-nearby-cat="temple" onclick="findNearby('temple')" class="filter-btn">🛕 Temples</button>
+                <button type="button" data-nearby-cat="church" onclick="findNearby('church')" class="filter-btn">⛪ Churches</button>
+                <button type="button" data-nearby-cat="hotel" onclick="findNearby('hotel')" class="filter-btn">🏨 Hotels</button>
+                <button type="button" data-nearby-cat="restaurant" onclick="findNearby('restaurant')" class="filter-btn">🍽️ Food</button>
+                <button type="button" data-nearby-cat="park" onclick="findNearby('park')" class="filter-btn">🌳 Parks</button>
+                <button type="button" data-nearby-cat="scenery" onclick="findNearby('scenery')" class="filter-btn">🌄 Views</button>
+            </div>
+            <div id="attractionList" class="list-container custom-scroll hidden">
+                <div class="list-heading">Nearby</div>
+                <div id="listBody" class="space-y-2"></div>
+            </div>
+        </section>
+
+        <section class="module-card scout-card-top-rose">
+            <h2 class="scout-h2 scout-h2--rose">
+                <span class="text-lg" aria-hidden="true">💰</span> 6. Budget Planner
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-4">
+                    <div class="scout-wiki-box">
+                        <p class="scout-wiki-label !text-[var(--h-rose)]">Total Trip Budget</p>
+                        <div class="flex gap-2">
+                            <input type="number" id="budgetIncomeInput" class="nav-input" placeholder="Enter Total Budget (e.g. 50000)">
+                            <button type="button" onclick="setBudgetIncome()" class="btn-scout !bg-[var(--h-rose)] shrink-0 !w-auto">Set</button>
+                        </div>
+                    </div>
+                    <div class="scout-wiki-box">
+                        <p class="scout-wiki-label !text-[var(--h-rose)]">Log Trip Expense</p>
+                        <div class="space-y-2">
+                            <input type="number" id="expAmount" class="nav-input" placeholder="Amount">
+                            <select id="expCategory" class="nav-input">
+                                <option value="Transport">✈️ Transport / Flights</option>
+                                <option value="Stay">🏨 Accommodation / Stay</option>
+                                <option value="Food">🍽️ Food & Dining</option>
+                                <option value="Tours">🎟️ Sightseeing / Tours</option>
+                                <option value="Shopping">🛍️ Souvenirs / Shopping</option>
+                                <option value="Misc">📦 Miscellaneous</option>
+                            </select>
+                            <input type="text" id="expNote" class="nav-input" placeholder="Note (optional)">
+                            <button type="button" onclick="addExpense()" class="btn-scout !bg-[var(--h-rose)]">Add Expense</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="scout-route-badge !border-[var(--h-rose)] !bg-transparent flex flex-wrap justify-between gap-4 py-4 px-2">
+                        <div class="flex-1 min-w-[80px] text-center border-r border-[var(--card-border)] last:border-0">
+                            <p class="scout-route-label">Total Budget</p>
+                            <p id="budgeIncomeVal" class="scout-route-value !text-[var(--h-rose)] !text-sm lg:!text-xl">₹0</p>
+                        </div>
+                        <div class="flex-1 min-w-[80px] text-center border-r border-[var(--card-border)] last:border-0">
+                            <p class="scout-route-label">Total Spent</p>
+                            <p id="budgetSpentVal" class="scout-route-value !text-red-500 !text-sm lg:!text-xl">₹0</p>
+                        </div>
+                        <div class="flex-1 min-w-[80px] text-center">
+                            <p class="scout-route-label">Remaining</p>
+                            <p id="budgetBalanceVal" class="scout-route-value !text-emerald-500 !text-sm lg:!text-xl">₹0</p>
+                        </div>
+                    </div>
+                    <div class="h-[200px]">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div id="expenseList" class="list-container custom-scroll mt-4 max-h-[200px]">
+                <div class="list-heading">Expenses Log</div>
+                <div id="expenseBody" class="space-y-2"></div>
+            </div>
+        </section>
+
+        <section class="module-card scout-card-top-teal">
+            <h2 class="scout-h2 scout-h2--teal">
+                <span class="text-lg" aria-hidden="true">🤝</span> 7. Travel Buddy
+            </h2>
+            <div class="space-y-4">
+                <p class="scout-wiki-text">Connect with fellow travelers heading your way.</p>
+                <div class="relative">
+                    <input type="text" id="buddyLocation" class="nav-input pr-10" placeholder="Where are you traveling to?" onkeypress="if(event.key==='Enter') window.findBuddy()">
+                    <button type="button" onclick="runVoice('buddyLocation')" class="btn-voice" title="Voice Search" aria-label="Activate voice search">🎤</button>
+                </div>
+                <div class="relative">
+                    <input type="text" id="buddyInterest" class="nav-input pr-10" placeholder="Interests (e.g. Photography, Food, Hiking)" onkeypress="if(event.key==='Enter') window.findBuddy()">
+                </div>
+                <button type="button" onclick="window.findBuddy()" id="buddyBtn" class="btn-scout btn-scout-teal">Find Companion</button>
+                <div id="buddyOut" class="scout-weather-panel hidden space-y-3">
+                    <div class="list-heading text-left" style="color: var(--text)">AI Matches</div>
+                    <div id="buddyResults" class="space-y-3 text-left max-h-[300px] overflow-y-auto custom-scroll"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="module-card scout-card-top-amber">
+            <h2 class="scout-h2 scout-h2--amber">
+                <span class="text-lg" aria-hidden="true">✉️</span> 8. Feedback
+            </h2>
+            <form action="https://formspree.io/f/mdklevdd" method="POST" class="space-y-4">
+                <input type="text" name="name" class="form-input" placeholder="Name" required>
+                <input type="email" name="email" class="form-input" placeholder="Email" required>
+                <textarea name="message" rows="2" class="form-input" placeholder="Message…" required></textarea>
+                <button type="submit" class="btn-scout btn-scout-amber">Send</button>
+            </form>
+        </section>
+
+        <footer class="scout-footer text-center">
+            YatraAI · Scout Pro · 2026
+        </footer>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script>
+        window.__SCOUT_CONFIG__ = {
+            groqKey: {{ groq_key|tojson }},
+            weatherKey: {{ weather_key|tojson }},
+            geminiKey: {{ gemini_key|tojson }}
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/scout.js') }}"></script>
+</body>
+</html>
