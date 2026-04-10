@@ -1,0 +1,8 @@
+flask>=3.0
+tensorflow
+gunicorn 
+numpy
+Pillow
+python-dotenv
+requests>=2.28
+
